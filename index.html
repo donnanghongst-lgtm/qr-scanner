@@ -2,534 +2,220 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#174a7e">
-  <title>สแกน QR ตรวจสอบการจ่ายสินค้า</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1769aa">
+  <title>Scanner QR ตรวจสอบการจ่ายสินค้า</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8"></script>
-
   <style>
     * { box-sizing: border-box; }
-
     body {
-      margin: 0;
-      padding: 12px;
-      background: #f3f6fa;
-      color: #182230;
+      margin: 0; padding: 14px;
       font-family: Arial, "Noto Sans Thai", sans-serif;
+      background: #f3f6fa; color: #182230;
     }
-
     main {
-      max-width: 560px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 16px;
-      padding: 18px;
-      box-shadow: 0 2px 14px rgba(0,0,0,.10);
+      max-width: 600px; margin: 10px auto; padding: 18px;
+      background: #fff; border-radius: 16px;
+      box-shadow: 0 2px 14px #00000012; text-align: center;
     }
-
-    h2 {
-      margin: 0 0 8px;
-      text-align: center;
-      color: #174a7e;
-    }
-
-    .muted {
-      color: #667085;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    #status {
-      padding: 12px;
-      border-radius: 9px;
-      background: #edf5ff;
-      margin: 12px 0;
-      line-height: 1.5;
-      overflow-wrap: anywhere;
-    }
-
-    #reader {
-      width: 100%;
-      max-width: 480px;
-      min-height: 20px;
-      margin: 12px auto;
-      overflow: hidden;
-      border-radius: 12px;
-      background: #000;
-    }
-
-    #reader video {
-      width: 100% !important;
-      height: auto !important;
-      object-fit: cover;
-    }
-
+    h2 { color:#174a7e; margin: 0 0 10px; }
+    #reader { width:100%; margin:16px auto; overflow:hidden; border-radius:12px; }
     button {
-      width: 100%;
-      border: 0;
-      border-radius: 9px;
-      padding: 15px;
-      margin: 5px 0;
-      background: #1769aa;
-      color: #fff;
-      font-size: 18px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
+      border:0; border-radius:9px; padding:13px 18px; margin:5px;
+      background:#1769aa; color:#fff; font-size:17px;
     }
-
-    button.gray { background: #667085; }
-    button:disabled { opacity: .55; }
-
-    input {
-      width: 100%;
-      padding: 13px;
-      border: 1px solid #ccd5df;
-      border-radius: 8px;
-      font-size: 16px;
-      margin: 5px 0 10px;
-    }
-
-    .card {
-      background: #f8fafc;
-      border-radius: 9px;
-      padding: 12px;
-      margin-top: 12px;
-      line-height: 1.5;
-    }
-
-    .error {
-      background: #fff1f0;
-      color: #b42318;
-    }
-
-    .success {
-      background: #eaf7ee;
-      color: #087443;
-    }
-
-    .small {
-      font-size: 12px;
-      color: #667085;
-      line-height: 1.5;
-    }
-
-    a {
-      color: #1769aa;
-      word-break: break-all;
-    }
+    button.secondary { background:#667085; }
+    button:disabled { opacity:.5; }
+    #status { margin-top:12px; font-size:16px; line-height:1.5; }
+    .hint { color:#667085; font-size:13px; line-height:1.5; }
   </style>
 </head>
-
 <body>
 <main>
   <h2>สแกน QR ตรวจสอบการจ่ายสินค้า</h2>
-
-  <div class="muted">
-    หน้านี้เป็นเครื่องสแกนภายนอก HTTPS สำหรับ iPhone และ Android
-    เมื่ออ่าน QR แล้ว ระบบจะส่ง CustomerID ไปยัง Google Apps Script
-    และเปิดหน้าข้อมูลจาก Google Sheets เดิม
-  </div>
-
-  <div id="status">กำลังเตรียมระบบ...</div>
+  <p>กดเริ่มสแกน แล้วอนุญาตให้ Safari ใช้กล้อง</p>
 
   <div id="reader"></div>
 
-  <button id="startBtn" type="button">📷 เริ่มสแกน QR</button>
-  <button id="stopBtn" type="button" class="gray" disabled>หยุดกล้อง</button>
+  <button id="startBtn" onclick="startScan()">เริ่มสแกนกล้อง</button>
+  <button id="stopBtn" class="secondary" onclick="stopScan()" disabled>หยุดกล้อง</button>
 
-  <div class="card">
-    <b>Google Apps Script Web App /exec</b>
-    <input id="appUrl"
-           type="url"
-           inputmode="url"
-           autocomplete="url"
-           placeholder="https://script.google.com/macros/s/.../exec">
-    <button id="saveUrlBtn" type="button">บันทึก URL</button>
-    <div class="small">
-      บันทึกครั้งเดียวในเครื่องนี้ URL จะถูกเก็บไว้ใน localStorage
-    </div>
-  </div>
-
-  <div id="manualCard" class="card">
-    <b>ทดสอบด้วยการกรอกรหัสเอง</b>
-    <input id="cid"
-           placeholder="เช่น B001 หรือ V096"
-           autocomplete="off"
-           autocapitalize="characters"
-           spellcheck="false">
-    <button id="openBtn" type="button">เปิดข้อมูล</button>
-  </div>
-
-  <div class="small">
-    หาก Safari ถาม “Allow Camera” ให้เลือก <b>Allow</b>
-    หากเคยเลือก Don't Allow ให้เข้า Settings &gt; Safari &gt;
-    Camera แล้วอนุญาตเว็บไซต์นี้
-  </div>
+  <div id="status">พร้อมใช้งาน</div>
+  <p class="hint">
+    หากอนุญาตกล้องแล้วแต่ไม่เปิด ให้ปิดหน้าเว็บ Scanner แล้วเปิดใหม่จาก HTTPS
+  </p>
 </main>
 
 <script>
-(function () {
-  'use strict';
+const APP_URL = 'https://script.google.com/macros/s/AKfycbxfDVCsJowdrDaCCoxGzDZ-80AD5OExgGXK7ZAamRnBoE1O26LtT2vv7tpBgFoS-Fq80w/exec';
 
-  const STORAGE_KEY = 'qr_gas_webapp_url_v1';
+let scanner = null;
+let starting = false;
+let scanning = false;
+let locked = false;
 
-  let scanner = null;
-  let scanning = false;
-  let starting = false;
-  let decoded = false;
+const $ = id => document.getElementById(id);
 
-  const $ = id => document.getElementById(id);
+function status(msg, error=false) {
+  $("status").textContent = msg;
+  $("status").style.color = error ? "#b42318" : "#344054";
+}
 
-  function status(message, bad) {
-    const el = $('status');
-    el.textContent = message;
-    el.className = bad ? 'card error' : 'card';
-  }
-
-  function normalizeUrl(value) {
-    let url = String(value || '').trim();
-
-    if (!url) return '';
-
-    url = url.replace(/\s+/g, '');
-
-    if (url.endsWith('/')) {
-      url = url.slice(0, -1);
-    }
-
-    return url;
-  }
-
-  function getAppUrl() {
-    const url = normalizeUrl($('appUrl').value);
-
-    if (!url) {
-      status('กรุณาระบุ URL ของ Google Apps Script /exec ก่อน', true);
-      return '';
-    }
-
-    if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/i.test(url)) {
-      status(
-        'URL ไม่ถูกต้อง ต้องเป็น URL Google Apps Script ที่ลงท้ายด้วย /exec',
-        true
-      );
-      return '';
-    }
-
-    return url;
-  }
-
-  function saveUrl() {
-    const url = getAppUrl();
-
-    if (!url) return;
-
-    localStorage.setItem(STORAGE_KEY, url);
-
-    status(
-      'บันทึก URL แล้ว สามารถกดเริ่มสแกนได้',
-      false
-    );
-  }
-
-  function loadUrl() {
-    const saved = localStorage.getItem(STORAGE_KEY) || '';
-    $('appUrl').value = saved;
-
-    if (saved) {
-      status(
-        'พร้อมใช้งาน กด “เริ่มสแกน QR” แล้วอนุญาต Camera',
-        false
-      );
-    } else {
-      status(
-        'กรุณาใส่ URL /exec แล้วกด “บันทึก URL”',
-        false
-      );
-    }
-  }
-
-  function validId(id) {
-    return (
-      /^B(?:00[1-9]|0[1-9][0-9])$/.test(id) ||
-      /^V(?:09[6-9]|1(?:0[0-9]|1[0-9]|2[0-9]|3[0-9]|4[0-9]|5[0-7]))$/.test(id)
-    );
-  }
-
-  function openCustomer(id) {
-    id = String(id || '').trim().toUpperCase();
-
-    if (!validId(id)) {
-      status(
-        'QR ไม่ใช่ CustomerID ที่ถูกต้อง ต้องเป็น B001–B095 หรือ V096–V157',
-        true
-      );
-      return;
-    }
-
-    const appUrl = getAppUrl();
-
-    if (!appUrl) return;
-
-    stopScan(false).finally(function () {
-      status(
-        'อ่าน QR สำเร็จ: ' + id + ' กำลังเปิดข้อมูล...',
-        false
-      );
-
-      const target =
-        appUrl +
-        '?customerId=' +
-        encodeURIComponent(id);
-
-      window.location.assign(target);
+async function getCamerasAfterPermission() {
+  // ขอ permission ก่อน เพื่อให้ iPhone Safari เปิดเผยรายการกล้อง
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } },
+      audio: false
     });
+  } finally {
+    if (stream) {
+      stream.getTracks().forEach(track => {
+        try { track.stop(); } catch(e) {}
+      });
+    }
   }
 
-  async function startScan() {
-    if (starting || scanning) return;
+  const cameras = await Html5Qrcode.getCameras();
+  if (!cameras || !cameras.length) {
+    throw new Error("ไม่พบกล้องของ iPhone");
+  }
+  return cameras;
+}
 
-    if (!window.isSecureContext) {
-      status(
-        'เปิดกล้องไม่ได้ เพราะหน้า Scanner ไม่ใช่ HTTPS',
-        true
-      );
-      return;
+function chooseBackCamera(cameras) {
+  const list = cameras || [];
+
+  // หลังจาก permission แล้ว iPhone มักจะมี label ให้เลือก
+  const back = list.find(c => {
+    const label = String(c.label || "").toLowerCase();
+    return label.includes("back") ||
+           label.includes("rear") ||
+           label.includes("environment") ||
+           label.includes("หลัง");
+  });
+
+  return back || list[list.length - 1];
+}
+
+async function startScan() {
+  if (starting || scanning) return;
+
+  if (!window.isSecureContext) {
+    status("หน้านี้ไม่ใช่ HTTPS จึงเปิดกล้องไม่ได้", true);
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    status("Safari รุ่นนี้ไม่รองรับการเปิดกล้องผ่านเว็บ กรุณาอัปเดต iOS/Safari", true);
+    return;
+  }
+
+  if (typeof Html5Qrcode === "undefined") {
+    status("โหลดระบบอ่าน QR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต", true);
+    return;
+  }
+
+  starting = true;
+  locked = false;
+  $("startBtn").disabled = true;
+  status("กำลังขอสิทธิ์และตรวจสอบกล้อง...");
+
+  try {
+    if (scanner) {
+      try { if (scanning) await scanner.stop(); } catch(e) {}
+      try { await scanner.clear(); } catch(e) {}
+      scanner = null;
+      scanning = false;
     }
 
-    if (!navigator.mediaDevices ||
-        !navigator.mediaDevices.getUserMedia) {
-      status(
-        'เบราว์เซอร์ไม่รองรับกล้อง กรุณาใช้ Safari หรือ Chrome รุ่นล่าสุด',
-        true
-      );
-      return;
-    }
+    scanner = new Html5Qrcode("reader");
 
-    if (typeof Html5Qrcode === 'undefined') {
-      status(
-        'โหลดตัวอ่าน QR ไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ต',
-        true
-      );
-      return;
-    }
+    const cameras = await getCamerasAfterPermission();
+    const camera = chooseBackCamera(cameras);
 
-    if (!getAppUrl()) return;
+    status("กำลังเปิดกล้อง: " + (camera.label || "กล้องหลัง") + "...");
 
-    starting = true;
-    decoded = false;
-    $('startBtn').disabled = true;
-
-    status(
-      'กำลังขออนุญาตใช้กล้อง... หาก Safari ถาม Camera ให้กด Allow',
-      false
-    );
-
-    try {
-      await stopScan(false);
-
-      scanner = new Html5Qrcode('reader');
-
-      const scanConfig = {
+    await scanner.start(
+      camera.id,
+      {
         fps: 10,
-        qrbox: function (width, height) {
-          const size = Math.max(
-            180,
-            Math.min(width, height, 280)
-          );
-
-          return {
-            width: size,
-            height: size
-          };
+        qrbox: function(width, height) {
+          const size = Math.max(180, Math.min(width, height, 280));
+          return { width:size, height:size };
         },
         aspectRatio: 1
-      };
+      },
+      async function(decodedText) {
+        if (locked) return;
 
-      const onSuccess = function (decodedText) {
-        if (decoded || !scanning) return;
+        const customerId = String(decodedText || "").trim().toUpperCase();
+        if (!customerId) return;
 
-        decoded = true;
-        openCustomer(decodedText);
-      };
+        locked = true;
+        status("อ่าน QR สำเร็จ: " + customerId + " กำลังเปิดข้อมูล...");
 
-      const onFrameError = function () {
-        /* ไม่แสดง error ทุก frame */
-      };
+        await stopScan(false);
 
-      /*
-       * iPhone/Android บางเครื่องไม่ยอมรับ exact: environment
-       * จึงลองแบบ ideal ก่อน และมี fallback เป็น camera ID
-       */
-      let started = false;
-
-      try {
-        await scanner.start(
-          { facingMode: { ideal: 'environment' } },
-          scanConfig,
-          onSuccess,
-          onFrameError
-        );
-        started = true;
-      } catch (firstError) {
-        console.warn('environment camera start failed:', firstError);
-
-        try {
-          const cameras = await Html5Qrcode.getCameras();
-          if (!cameras || !cameras.length) throw firstError;
-
-          let camera = cameras.find(function (c) {
-            const label = String(c.label || '').toLowerCase();
-            return label.includes('back') ||
-                   label.includes('rear') ||
-                   label.includes('environment') ||
-                   label.includes('หลัง');
-          }) || cameras[cameras.length - 1];
-
-          await scanner.start(
-            camera.id,
-            scanConfig,
-            onSuccess,
-            onFrameError
-          );
-          started = true;
-        } catch (secondError) {
-          console.error('camera fallback failed:', secondError);
-          throw firstError;
-        }
+        const url = APP_URL + "?customerId=" + encodeURIComponent(customerId);
+        window.location.replace(url);
+      },
+      function(errorMessage) {
+        // ไม่แสดง error ทุก frame เพราะ callback นี้ทำงานตลอดเวลาที่ยังหา QR ไม่พบ
       }
+    );
 
-      if (!started) {
-        throw new Error('ไม่สามารถเริ่มกล้องได้');
-      }
-
-      scanning = true;
-      $('stopBtn').disabled = false;
-
-      status(
-        'เปิดกล้องสำเร็จ กรุณาส่อง QR Code ให้อยู่ในกรอบ',
-        false
-      );
-
-    } catch (e) {
-      console.error(e);
-
-      scanning = false;
-
-      let msg =
-        e && e.message
-          ? e.message
-          : String(e);
-
-      if (
-        e &&
-        (
-          e.name === 'NotAllowedError' ||
-          e.name === 'PermissionDeniedError'
-        )
-      ) {
-        msg =
-          'Safari/Chrome ไม่อนุญาตกล้อง กรุณากด Allow Camera และลองใหม่';
-      } else if (
-        e &&
-        (
-          e.name === 'NotFoundError' ||
-          e.name === 'DevicesNotFoundError'
-        )
-      ) {
-        msg = 'ไม่พบกล้องในอุปกรณ์';
-      } else if (
-        e &&
-        (
-          e.name === 'NotReadableError' ||
-          e.name === 'TrackStartError'
-        )
-      ) {
-        msg = 'กล้องกำลังถูกใช้งานโดยแอปหรือหน้าเว็บอื่น';
-      }
-
-      status(
-        'เปิดกล้องไม่สำเร็จ: ' + msg,
-        true
-      );
-
-    } finally {
-      starting = false;
-      $('startBtn').disabled = false;
-      $('stopBtn').disabled = !scanning;
-    }
-  }
-
-  async function stopScan(showMessage) {
-    const old = scanner;
+    scanning = true;
+    $("stopBtn").disabled = false;
+    status("เปิดกล้องสำเร็จ กรุณาส่อง QR Code");
+  } catch (e) {
+    console.error("START CAMERA ERROR:", e);
 
     scanning = false;
-    $('stopBtn').disabled = true;
+    scanner = null;
 
-    if (!old) return;
+    let message = e && e.message ? e.message : String(e);
 
-    try {
-      await old.stop();
-    } catch (e) {
-      console.warn('scanner.stop', e);
+    if (e && (e.name === "NotAllowedError" || e.name === "PermissionDeniedError")) {
+      message = "Safari อนุญาตกล้องแล้ว แต่ยังเริ่มกล้องไม่ได้ ให้ปิดหน้า Scanner แล้วเปิดใหม่ และตรวจสอบ การตั้งค่า > Apps > Safari > Camera > Allow";
+    } else if (e && (e.name === "NotFoundError" || e.name === "DevicesNotFoundError")) {
+      message = "ไม่พบกล้องของ iPhone";
+    } else if (e && (e.name === "NotReadableError" || e.name === "TrackStartError")) {
+      message = "กล้องกำลังถูกใช้งานโดยแอปหรือหน้าเว็บอื่น กรุณาปิดแอปกล้อง/หน้าเว็บอื่นแล้วลองใหม่";
     }
 
-    try {
-      await old.clear();
-    } catch (e) {
-      console.warn('scanner.clear', e);
-    }
+    status("เปิดกล้องไม่สำเร็จ: " + message, true);
+    $("startBtn").disabled = false;
+    $("stopBtn").disabled = true;
+  } finally {
+    starting = false;
+  }
+}
 
-    if (scanner === old) {
-      scanner = null;
-    }
+async function stopScan(showMessage=true) {
+  const old = scanner;
+  scanning = false;
+  $("stopBtn").disabled = true;
 
-    if (showMessage !== false) {
-      status('หยุดกล้องเรียบร้อย', false);
-    }
+  if (!old) {
+    $("startBtn").disabled = false;
+    if (showMessage) status("หยุดกล้องแล้ว");
+    return;
   }
 
-  $('saveUrlBtn').addEventListener('click', saveUrl);
+  try { await old.stop(); } catch(e) {}
+  try { await old.clear(); } catch(e) {}
 
-  $('startBtn').addEventListener('click', startScan);
+  if (scanner === old) scanner = null;
 
-  $('stopBtn').addEventListener(
-    'click',
-    function () {
-      stopScan(true);
-    }
-  );
+  $("startBtn").disabled = false;
+  if (showMessage) status("หยุดกล้องแล้ว");
+}
 
-  $('openBtn').addEventListener(
-    'click',
-    function () {
-      openCustomer($('cid').value);
-    }
-  );
-
-  $('cid').addEventListener(
-    'keydown',
-    function (e) {
-      if (e.key === 'Enter') {
-        openCustomer($('cid').value);
-      }
-    }
-  );
-
-  window.addEventListener(
-    'beforeunload',
-    function () {
-      if (scanner && scanning) {
-        scanner.stop().catch(function () {});
-      }
-    }
-  );
-
-  loadUrl();
-
-})();
+window.addEventListener("beforeunload", () => {
+  try { if (scanner && scanning) scanner.stop(); } catch(e) {}
+});
 </script>
 </body>
 </html>
